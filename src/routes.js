@@ -1,10 +1,10 @@
-const { createUser, loginUser, updateUser, readUser } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory } = require("./handler");
 
 const routes = [
     {
         method: 'POST',
         path: '/register',
-        handler: createUser,
+        handler: registerUser,
     },
     {
         method: 'POST',
@@ -13,28 +13,18 @@ const routes = [
     },
     {
         method: 'GET',
-        path: '/readUser',
-        handler: readUser,
+        path: '/profile',
+        handler: getUser,
     },
     {
         method: 'PUT',
-        path: '/updateUser',
+        path: '/editProfile',
         handler: updateUser,
-    },
-    {
-        method: 'DELETE',
-        path: '/deleteUser',
-        handler: () => {},
     },
     {
         method: 'GET',
         path: '/history',
-        handler: () => {},
-    },
-    {
-        method: 'POST',
-        path: '/scanProduct',
-        handler: () => {},
+        handler: getHistory,
     }
 ];
  
