@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  database: "db_sts",
+  database: "sts_dummy",
   password: "",
 });
 
@@ -20,11 +20,11 @@ db.connect((err) => {
 
 const registerUser = async (request, h) => {
   try {
-    const { name, email, password } = request.payload;
-    const hashedPass = await bcrypt.hash(password, 10);
+    const { name, email, pass } = request.payload;
+    const hashedPass = await bcrypt.hash(pass, 10);
 
     const query =
-      "INSERT INTO table_user(user_name, user_email, user_password) VALUES(?, ?, ?)";
+      "INSERT INTO table_user(user_name, user_email, user_pass) VALUES(?, ?, ?)";
 
     await new Promise((resolve, reject) => {
       db.query(query, [name, email, hashedPass], (err, results) => {
@@ -53,7 +53,7 @@ const registerUser = async (request, h) => {
 };
 
 const loginUser = async (request, h) => {
-  const { email, password } = request.payload;
+  const { email, pass } = request.payload;
 
   try {
     const query = "SELECT * FROM table_user WHERE user_email = ?";
@@ -77,7 +77,7 @@ const loginUser = async (request, h) => {
       return response;
     }
 
-    const isPassValid = await bcrypt.compare(password, user.user_password);
+    const isPassValid = await bcrypt.compare(pass, user.user_pass);
 
     if (!isPassValid) {
       const response = h.response({
@@ -146,7 +146,7 @@ const getUser = async (request, h) => {
       return response;
     }
 
-    const { user_password, ...userData } = user;
+    const { user_pass, ...userData } = user;
 
     const response = h.response({
       status: "success",
@@ -237,7 +237,7 @@ const getHistory = async (request, h) => {
 
     const userId = decodedToken.userId;
 
-    const query = "SELECT * FROM table_scan WHERE id_user = ?";
+    const query = "SELECT * FROM table_scan WHERE user_id = ?";
 
     const history = await new Promise((resolve, reject) => {
       db.query(query, [userId], (err, rows, field) => {
@@ -275,4 +275,61 @@ const getHistory = async (request, h) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory };
+const getHistoryById = async (request, h) => {
+  try {
+    const token = request.headers.authorization.replace("Bearer ", "");
+    let decodedToken;
+
+    try {
+      decodedToken = jwt.verify(token, "secret_key");
+    } catch (err) {
+      const response = h.response({
+        status: "missed",
+        message: "User is not authorized!",
+      });
+      response.code(401);
+      return response;
+    }
+
+    const userId = decodedToken.userId;
+    const scanId = request.params.scanId;
+
+    const query = "SELECT * FROM table_scan WHERE user_id = ? AND scan_id = ?";
+
+    const history = await new Promise((resolve, reject) => {
+      db.query(query, [userId, scanId], (err, rows, field) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows[0]);
+        }
+      });
+    });
+
+    if (!history) {
+      const response = h.response({
+        status: "fail",
+        message: "scanId not found",
+      });
+      response.code(403);
+      return response;
+    }
+
+    const response = h.response({
+      status: "success",
+      message: "read successful",
+      data: history,
+    });
+    response.code(200);
+    return response;
+  } catch (err) {
+    const response = h.response({
+      status: "fail",
+      message: err.message,
+    });
+    response.code(500);
+    return response;
+  }
+};
+
+module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById };

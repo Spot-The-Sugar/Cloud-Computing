@@ -1,4 +1,4 @@
-const { registerUser, loginUser, getUser, updateUser, getHistory } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById } = require("./handler");
 
 const routes = [
     {
@@ -25,6 +25,11 @@ const routes = [
         method: 'GET',
         path: '/history',
         handler: getHistory,
+    },
+    {
+        method: 'GET',
+        path: '/history/{scanId}',
+        handler: getHistoryById,
     }
 ];
  
