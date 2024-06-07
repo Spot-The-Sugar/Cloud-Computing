@@ -1,4 +1,4 @@
-const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct } = require("./handler");
 
 const routes = [
     {
@@ -36,6 +36,11 @@ const routes = [
         path: '/grade/{gradeId}',
         handler: getGradeById,
     },
+    {
+        method: 'PUT',
+        path: '/consume',
+        handler: consumeProduct,
+    }
 ];
  
 module.exports = routes;

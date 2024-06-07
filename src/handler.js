@@ -185,10 +185,8 @@ const updateUser = async (request, h) => {
   const userId = decodedToken.userId;
 
   try {
-    const query =
-      "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
+    const query = "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
 
-    // will add userId later
     await new Promise((resolve, reject) => {
       db.query(
         query,
@@ -389,4 +387,89 @@ const getGradeById = async (request, h) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById };
+const consumeProduct = async (request, h) => {
+  const token = request.headers.authorization.replace("Bearer ", "");
+  let decodedToken;
+
+  try {
+    decodedToken = jwt.verify(token, "secret_key");
+  } catch (err) {
+    const response = h.response({
+      status: "missed",
+      message: "User is not authorized!",
+    });
+    response.code(401);
+    return response;
+  }
+
+  const userId = decodedToken.userId;
+  const currentDate = new Date().toISOString();
+
+  const { consumeSugar } = request.payload;
+
+  try {
+    const query = "SELECT * FROM table_consume WHERE user_id = ?";
+    const query2 = "INSERT INTO table_consume(consume_sugar, consume_date, user_id) VALUES(?, ?, ?)";
+    const query3 = "UPDATE table_consume SET consume_sugar = ?, consume_date = ? WHERE user_id = ?";
+
+    const checkConsume = await new Promise((resolve, reject) => {
+      db.query(query, [userId], (err, rows, field) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows[0]);
+        }
+      });
+    });
+
+    if (!checkConsume) {
+      await new Promise((resolve, reject) => {
+        db.query(query2, [consumeSugar, currentDate, userId], (err, results) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(results);
+          }
+        });
+      });
+
+      const response = h.response({
+        status: "success",
+        message: "insert successful",
+      });
+      response.code(200);
+      return response;
+    }
+
+    const currentConsume = parseFloat(checkConsume.consume_sugar);
+    const newConsume = parseFloat(consumeSugar) + currentConsume;
+
+    if (checkConsume) {
+      await new Promise((resolve, reject) => {
+        db.query(query3, [newConsume, currentDate, userId], (err, rows, field) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+    }
+
+    const response = h.response({
+      status: "success",
+      message: "update successful",
+    });
+    response.code(200);
+    return response;
+  } catch (err) {
+    const response = h.response({
+      status: "fail",
+      message: err.message,
+    });
+    response.code(500);
+    return response;
+  }
+};
+
+module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct };
