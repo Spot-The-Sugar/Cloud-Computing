@@ -472,4 +472,80 @@ const consumeProduct = async (request, h) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct };
+const getSugarConsume = async (request, h) => {
+  try {
+    const token = request.headers.authorization.replace("Bearer ", "");
+    let decodedToken;
+
+    try {
+      decodedToken = jwt.verify(token, "secret_key");
+    } catch (err) {
+      const response = h.response({
+        status: "missed",
+        message: "User is not authorized!",
+      });
+      response.code(401);
+      return response;
+    }
+
+    const userId = decodedToken.userId;
+
+    const query = "SELECT u.user_name, u.sugar_limit, c.consume_sugar, c.consume_date FROM table_user u JOIN table_consume c ON u.user_id = c.user_id WHERE u.user_id = ?";
+
+    const tracker = await new Promise((resolve, reject) => {
+      db.query(query, [userId], (err, rows, field) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows[0]);
+        }
+      });
+    });
+
+    if (!tracker) {
+      const response = h.response({
+        status: "fail",
+        message: "Data not found!",
+      });
+      response.code(400);
+      return response;
+    }
+    
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    const consumeDate = new Date(tracker.consume_date).toISOString().split('T')[0];
+
+    if (currentDate !== consumeDate) {
+      // If the dates differ, reset consume_sugar to 0
+      const resetQuery = "UPDATE table_consume SET consume_sugar = 0, consume_date = ? WHERE user_id = ?";
+      await new Promise((resolve, reject) => {
+        db.query(resetQuery, [currentDate, userId, consumeDate], (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+
+      tracker.consume_sugar = 0; // Update the local tracker object to reflect the reset
+      tracker.consume_date = currentDate; // Update the local tracker object to reflect the new date
+    }
+
+    const response = h.response({
+      status: "success",
+      message: "read successful",
+      data: tracker,
+    });
+    response.code(200);
+    return response;
+  } catch (err) {
+    const response = h.response({
+      status: "fail",
+      message: err.message,
+    });
+    response.code(500);
+    return response;
+  }
+};
+
+module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume };

@@ -1,4 +1,4 @@
-const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume } = require("./handler");
 
 const routes = [
     {
@@ -40,6 +40,11 @@ const routes = [
         method: 'PUT',
         path: '/consume',
         handler: consumeProduct,
+    },
+    {
+        method: 'GET',
+        path: '/track',
+        handler: getSugarConsume,
     }
 ];
  
