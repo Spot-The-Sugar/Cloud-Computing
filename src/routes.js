@@ -1,4 +1,4 @@
-const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById } = require("./handler");
 
 const routes = [
     {
@@ -18,7 +18,7 @@ const routes = [
     },
     {
         method: 'PUT',
-        path: '/editProfile',
+        path: '/profile/edit',
         handler: updateUser,
     },
     {
@@ -30,7 +30,12 @@ const routes = [
         method: 'GET',
         path: '/history/{scanId}',
         handler: getHistoryById,
-    }
+    },
+    {
+        method: 'GET',
+        path: '/grade/{gradeId}',
+        handler: getGradeById,
+    },
 ];
  
 module.exports = routes;

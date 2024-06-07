@@ -237,7 +237,7 @@ const getHistory = async (request, h) => {
 
     const userId = decodedToken.userId;
 
-    const query = "SELECT * FROM table_scan WHERE user_id = ?";
+    const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
 
     const history = await new Promise((resolve, reject) => {
       db.query(query, [userId], (err, rows, field) => {
@@ -294,7 +294,7 @@ const getHistoryById = async (request, h) => {
     const userId = decodedToken.userId;
     const scanId = request.params.scanId;
 
-    const query = "SELECT * FROM table_scan WHERE user_id = ? AND scan_id = ?";
+    const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ? AND scan_id = ?";
 
     const history = await new Promise((resolve, reject) => {
       db.query(query, [userId, scanId], (err, rows, field) => {
@@ -332,4 +332,61 @@ const getHistoryById = async (request, h) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById };
+const getGradeById = async (request, h) => {
+  try {
+    const token = request.headers.authorization.replace("Bearer ", "");
+    let decodedToken;
+
+    try {
+      decodedToken = jwt.verify(token, "secret_key");
+    } catch (err) {
+      const response = h.response({
+        status: "missed",
+        message: "User is not authorized!",
+      });
+      response.code(401);
+      return response;
+    }
+
+    const userId = decodedToken.userId;
+    const gradeId = request.params.gradeId;
+
+    const query = "SELECT * FROM table_grade WHERE grade_id = ?";
+
+    const grade = await new Promise((resolve, reject) => {
+      db.query(query, [gradeId], (err, rows, field) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows[0]);
+        }
+      });
+    });
+
+    if (!grade) {
+      const response = h.response({
+        status: "fail",
+        message: "gradeId not found",
+      });
+      response.code(403);
+      return response;
+    }
+
+    const response = h.response({
+      status: "success",
+      message: "read successful",
+      data: grade,
+    });
+    response.code(200);
+    return response;
+  } catch (err) {
+    const response = h.response({
+      status: "fail",
+      message: err.message,
+    });
+    response.code(500);
+    return response;
+  }
+};
+
+module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById };
