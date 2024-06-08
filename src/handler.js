@@ -2,21 +2,37 @@ const { nanoid } = require("nanoid");
 const mysql = require("mysql");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const mysql = require('promise-mysql');
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASS
-});
+const createUnixSocketPool = async config => {
+  return mysql.createPool({
+    user: process.env.DB_USER, // e.g. 'my-db-user'
+    password: process.env.DB_PASS, // e.g. 'my-db-password'
+    database: process.env.DB_NAME, // e.g. 'my-database'
+    socketPath: process.env.INSTANCE_UNIX_SOCKET, // e.g. '/cloudsql/project:region:instance'
+  });
+};
 
-db.connect((err) => {
-  if (err) {
-    console.error("Error connecting to the database:", err);
-  } else {
-    console.log("Connected to the database");
-  }
-});
+let pool;
+(async () => {
+    pool = await createUnixSocketPool();
+})();
+
+
+// const db = mysql.createConnection({
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_USER,
+//   database: process.env.DB_NAME,
+//   password: process.env.DB_PASS
+// });
+
+// db.connect((err) => {
+//   if (err) {
+//     console.error("Error connecting to the database:", err);
+//   } else {
+//     console.log("Connected to the database");
+//   }
+// });
 
 const registerUser = async (request, h) => {
   try {
@@ -26,15 +42,17 @@ const registerUser = async (request, h) => {
     const query =
       "INSERT INTO table_user(user_name, user_email, user_pass) VALUES(?, ?, ?)";
 
-    await new Promise((resolve, reject) => {
-      db.query(query, [name, email, hashedPass], (err, results) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results);
-        }
-      });
-    });
+    await pool.query(query, [name, email, hashedPass]);
+
+    // await new Promise((resolve, reject) => {
+    //   db.query(query, [name, email, hashedPass], (err, results) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(results);
+    //     }
+    //   });
+    // });
 
     const response = h.response({
       status: "success",
@@ -58,15 +76,18 @@ const loginUser = async (request, h) => {
   try {
     const query = "SELECT * FROM table_user WHERE user_email = ?";
 
-    const user = await new Promise((resolve, reject) => {
-      db.query(query, [email], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const users = await pool.query(query, [email]);
+    const user = users[0];
+
+    // const user = await new Promise((resolve, reject) => {
+    //   db.query(query, [email], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
 
     if (!user) {
       const response = h.response({
@@ -127,15 +148,18 @@ const getUser = async (request, h) => {
 
     const query = "SELECT * FROM table_user WHERE user_id = ?";
 
-    const user = await new Promise((resolve, reject) => {
-      db.query(query, [userId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const users = await pool.query(query, [userId]);
+    const user = users[0];
+
+    // const user = await new Promise((resolve, reject) => {
+    //   db.query(query, [userId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
 
     if (!user) {
       const response = h.response({
@@ -187,19 +211,21 @@ const updateUser = async (request, h) => {
   try {
     const query = "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
 
-    await new Promise((resolve, reject) => {
-      db.query(
-        query,
-        [name, age, height, weight, limit, userId],
-        (err, rows, field) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
+    await pool.query(query, [name, age, height, weight, limit, userId]);
+
+    // await new Promise((resolve, reject) => {
+    //   db.query(
+    //     query,
+    //     [name, age, height, weight, limit, userId],
+    //     (err, rows, field) => {
+    //       if (err) {
+    //         reject(err);
+    //       } else {
+    //         resolve();
+    //       }
+    //     }
+    //   );
+    // });
 
     const response = h.response({
       status: "success",
@@ -237,15 +263,17 @@ const getHistory = async (request, h) => {
 
     const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
 
-    const history = await new Promise((resolve, reject) => {
-      db.query(query, [userId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    const history = await pool.query(query, [userId]);
+
+    // const history = await new Promise((resolve, reject) => {
+    //   db.query(query, [userId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows);
+    //     }
+    //   });
+    // });
 
     if (history.length === 0) {
       const response = h.response({
@@ -294,17 +322,19 @@ const getHistoryById = async (request, h) => {
 
     const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ? AND scan_id = ?";
 
-    const history = await new Promise((resolve, reject) => {
-      db.query(query, [userId, scanId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const history = await pool.query(query, [userId, scanId]);
 
-    if (!history) {
+    // const history = await new Promise((resolve, reject) => {
+    //   db.query(query, [userId, scanId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
+
+    if (history === 0) {
       const response = h.response({
         status: "fail",
         message: "scanId not found",
@@ -351,15 +381,18 @@ const getGradeById = async (request, h) => {
 
     const query = "SELECT * FROM table_grade WHERE grade_id = ?";
 
-    const grade = await new Promise((resolve, reject) => {
-      db.query(query, [gradeId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const grades = await pool.query(query, [gradeId]);
+    const grade = grades[0];
+
+    // const grade = await new Promise((resolve, reject) => {
+    //   db.query(query, [gradeId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
 
     if (!grade) {
       const response = h.response({
@@ -412,26 +445,31 @@ const consumeProduct = async (request, h) => {
     const query2 = "INSERT INTO table_consume(consume_sugar, consume_date, user_id) VALUES(?, ?, ?)";
     const query3 = "UPDATE table_consume SET consume_sugar = ?, consume_date = ? WHERE user_id = ?";
 
-    const checkConsume = await new Promise((resolve, reject) => {
-      db.query(query, [userId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const checkConsume = await pool.query(query, [userId]);
+    const consumeRecord = checkConsume[0];
 
-    if (!checkConsume) {
-      await new Promise((resolve, reject) => {
-        db.query(query2, [consumeSugar, currentDate, userId], (err, results) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(results);
-          }
-        });
-      });
+    // const checkConsume = await new Promise((resolve, reject) => {
+    //   db.query(query, [userId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
+
+    if (!consumeRecord) {
+      await pool.query(query2, [consumeSugar, currentDate, userId]);
+
+      // await new Promise((resolve, reject) => {
+      //   db.query(query2, [consumeSugar, currentDate, userId], (err, results) => {
+      //     if (err) {
+      //       reject(err);
+      //     } else {
+      //       resolve(results);
+      //     }
+      //   });
+      // });
 
       const response = h.response({
         status: "success",
@@ -441,19 +479,21 @@ const consumeProduct = async (request, h) => {
       return response;
     }
 
-    const currentConsume = parseFloat(checkConsume.consume_sugar);
+    const currentConsume = parseFloat(consumeRecord.consume_sugar);
     const newConsume = parseFloat(consumeSugar) + currentConsume;
 
     if (checkConsume) {
-      await new Promise((resolve, reject) => {
-        db.query(query3, [newConsume, currentDate, userId], (err, rows, field) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
+      await pool.query(query3, [newConsume, currentDate, userId]);
+
+      // await new Promise((resolve, reject) => {
+      //   db.query(query3, [newConsume, currentDate, userId], (err, rows, field) => {
+      //     if (err) {
+      //       reject(err);
+      //     } else {
+      //       resolve();
+      //     }
+      //   });
+      // });
     }
 
     const response = h.response({
@@ -492,15 +532,18 @@ const getSugarConsume = async (request, h) => {
 
     const query = "SELECT u.user_name, u.sugar_limit, c.consume_sugar, c.consume_date FROM table_user u JOIN table_consume c ON u.user_id = c.user_id WHERE u.user_id = ?";
 
-    const tracker = await new Promise((resolve, reject) => {
-      db.query(query, [userId], (err, rows, field) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows[0]);
-        }
-      });
-    });
+    const trackers = await pool.query(query, [userId]);
+    const tracker = trackers[0];
+
+    // const tracker = await new Promise((resolve, reject) => {
+    //   db.query(query, [userId], (err, rows, field) => {
+    //     if (err) {
+    //       reject(err);
+    //     } else {
+    //       resolve(rows[0]);
+    //     }
+    //   });
+    // });
 
     if (!tracker) {
       const response = h.response({
@@ -517,15 +560,18 @@ const getSugarConsume = async (request, h) => {
     if (currentDate !== consumeDate) {
       // If the dates differ, reset consume_sugar to 0
       const resetQuery = "UPDATE table_consume SET consume_sugar = 0, consume_date = ? WHERE user_id = ?";
-      await new Promise((resolve, reject) => {
-        db.query(resetQuery, [currentDate, userId, consumeDate], (err, result) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(result);
-          }
-        });
-      });
+
+      await pool.query(resetQuery, [currentDate, userId]);
+
+      // await new Promise((resolve, reject) => {
+      //   db.query(resetQuery, [currentDate, userId, consumeDate], (err, result) => {
+      //     if (err) {
+      //       reject(err);
+      //     } else {
+      //       resolve(result);
+      //     }
+      //   });
+      // });
 
       tracker.consume_sugar = 0; // Update the local tracker object to reflect the reset
       tracker.consume_date = currentDate; // Update the local tracker object to reflect the new date
