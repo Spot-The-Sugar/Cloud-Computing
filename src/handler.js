@@ -1,5 +1,5 @@
 const { nanoid } = require("nanoid");
-const mysql = require("mysql");
+// const mysql = require("mysql");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mysql = require('promise-mysql');
