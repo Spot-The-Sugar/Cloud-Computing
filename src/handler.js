@@ -436,7 +436,7 @@ const consumeProduct = async (request, h) => {
   }
 
   const userId = decodedToken.userId;
-  const currentDate = new Date().toISOString();
+  const currentDate = new Date().toISOString().split('T')[0];
 
   const { consumeSugar } = request.payload;
 
