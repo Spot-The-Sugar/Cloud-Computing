@@ -207,7 +207,7 @@ const getHistory = async (request, h) => {
     const userId = decodedToken.userId;
 
     const query =
-      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
+      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_barcode=table_product.product_barcode WHERE user_id = ?";
 
     const history = await pool.query(query, [userId]);
 
@@ -257,7 +257,7 @@ const getHistoryById = async (request, h) => {
     const scanId = request.params.scanId;
 
     const query =
-      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ? AND scan_id = ?";
+      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_barcode=table_product.product_barcode WHERE user_id = ? AND scan_id = ?";
 
     const history = await pool.query(query, [userId, scanId]);
 
@@ -494,7 +494,7 @@ const scanImage = async (request, h) => {
       const productResult = productResults[0];
       const currentDate = new Date().toISOString().split("T")[0];
 
-      const updateHistoryQuery = "INSERT INTO table_scan (scan_date, user_id, product_barcode) VALUES(?, ?, ?)";
+      const updateHistoryQuery = "INSERT INTO table_scan (scan_date, user_id, product_barcode, product_id) VALUES(?, ?, ?, 1)";
 
       await pool.query(updateHistoryQuery, [currentDate, userId, predictedClass]);
 
