@@ -1,8 +1,11 @@
 const { nanoid } = require("nanoid");
-// const mysql = require("mysql");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mysql = require('promise-mysql');
+const axios = require('axios');
+const Path = require('path');
+const FormData = require('form-data');
+const fs = require('fs');
 
 const createUnixSocketPool = async config => {
   return mysql.createPool({
@@ -80,7 +83,10 @@ const loginUser = async (request, h) => {
     const response = h.response({
       status: "success",
       message: "login successful",
-      data: { token, userData },
+      data: [
+        { token },
+        { userData }
+      ],
     });
     response.code(200);
     return response;
@@ -456,4 +462,71 @@ const getSugarConsume = async (request, h) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume };
+const scanImage = async (request, h) => {
+  try {
+
+      const token = request.headers.authorization.replace('Bearer ', '');
+      let decodedToken;
+
+      try{
+          decodedToken = jwt.verify(token, 'secret_key');
+      } catch (err) {
+          const response = h.response({
+              status: 'missed',
+              message: 'User is not authorized!',
+          });
+          response.code(401);
+          return response;
+      }
+
+      const userId = decodedToken.userId;
+      const file = request.payload.file;
+      
+      // Save the file to a temp location
+      const filePath = Path.join(__dirname, 'tempFile', file.hapi.filename);
+      const writableStream = fs.createWriteStream(filePath);
+      file.pipe(writableStream);
+
+      // Wait to be saved
+      await new Promise((resolve, reject) => {
+          writableStream.on('finish', resolve);
+          writableStream.on('error', reject);
+      });
+      
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(filePath));
+      
+      const mlResponse = await axios.post('https://scan-dhmn4637lq-et.a.run.app/scan', formData, {
+          headers: formData.getHeaders,
+          responseType: 'json',  
+      });
+
+      fs.unlinkSync(filePath);
+      
+      const predictedBarcode = mlResponse.data.predicted_class;
+      const predictedProb = mlResponse.data.prediction_prob;
+
+      const getProductQuery = "SELECT * FROM table_product WHERE product_barcode = ?";
+
+      const productResults = await pool.query(getProductQuery, [predictedBarcode]);
+      const productResult = productResults[0];
+
+      const response = h.response({
+          status: 'success',
+          message: 'image predicted',
+          predictedProb: predictedProb,
+          data: productResult,
+      });
+      response.code(200);
+      return response;
+  } catch (err) {
+      const response = h.response({
+          status: 'fail',
+          message: err.message,
+      });
+      response.code(500);
+      return response;
+  }
+};
+
+module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume, scanImage };

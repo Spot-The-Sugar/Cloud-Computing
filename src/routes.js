@@ -1,4 +1,4 @@
-const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume } = require("./handler");
+const { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume, scanImage } = require("./handler");
 
 const routes = [
     {
@@ -45,6 +45,11 @@ const routes = [
         method: 'GET',
         path: '/track',
         handler: getSugarConsume,
+    },
+    {
+        method: 'POST',
+        path: '/scan',
+        handler: scanImage,
     }
 ];
  
