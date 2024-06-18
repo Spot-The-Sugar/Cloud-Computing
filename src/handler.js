@@ -19,21 +19,6 @@ let pool;
 })();
 
 
-// const db = mysql.createConnection({
-//   host: process.env.DB_HOST,
-//   user: process.env.DB_USER,
-//   database: process.env.DB_NAME,
-//   password: process.env.DB_PASS
-// });
-
-// db.connect((err) => {
-//   if (err) {
-//     console.error("Error connecting to the database:", err);
-//   } else {
-//     console.log("Connected to the database");
-//   }
-// });
-
 const registerUser = async (request, h) => {
   try {
     const { name, email, pass } = request.payload;
@@ -43,16 +28,6 @@ const registerUser = async (request, h) => {
       "INSERT INTO table_user(user_name, user_email, user_pass) VALUES(?, ?, ?)";
 
     await pool.query(query, [name, email, hashedPass]);
-
-    // await new Promise((resolve, reject) => {
-    //   db.query(query, [name, email, hashedPass], (err, results) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(results);
-    //     }
-    //   });
-    // });
 
     const response = h.response({
       status: "success",
@@ -79,16 +54,6 @@ const loginUser = async (request, h) => {
     const users = await pool.query(query, [email]);
     const user = users[0];
 
-    // const user = await new Promise((resolve, reject) => {
-    //   db.query(query, [email], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
-
     if (!user) {
       const response = h.response({
         status: "fail",
@@ -110,11 +75,12 @@ const loginUser = async (request, h) => {
     }
 
     const token = jwt.sign({ userId: user.user_id }, "secret_key");
+    const { user_pass, ...userData } = user;
 
     const response = h.response({
       status: "success",
       message: "login successful",
-      data: { token },
+      data: { token, userData },
     });
     response.code(200);
     return response;
@@ -150,16 +116,6 @@ const getUser = async (request, h) => {
 
     const users = await pool.query(query, [userId]);
     const user = users[0];
-
-    // const user = await new Promise((resolve, reject) => {
-    //   db.query(query, [userId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
 
     if (!user) {
       const response = h.response({
@@ -213,20 +169,6 @@ const updateUser = async (request, h) => {
 
     await pool.query(query, [name, age, height, weight, limit, userId]);
 
-    // await new Promise((resolve, reject) => {
-    //   db.query(
-    //     query,
-    //     [name, age, height, weight, limit, userId],
-    //     (err, rows, field) => {
-    //       if (err) {
-    //         reject(err);
-    //       } else {
-    //         resolve();
-    //       }
-    //     }
-    //   );
-    // });
-
     const response = h.response({
       status: "success",
       message: "update successful",
@@ -264,16 +206,6 @@ const getHistory = async (request, h) => {
     const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
 
     const history = await pool.query(query, [userId]);
-
-    // const history = await new Promise((resolve, reject) => {
-    //   db.query(query, [userId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows);
-    //     }
-    //   });
-    // });
 
     if (history.length === 0) {
       const response = h.response({
@@ -324,16 +256,6 @@ const getHistoryById = async (request, h) => {
 
     const history = await pool.query(query, [userId, scanId]);
 
-    // const history = await new Promise((resolve, reject) => {
-    //   db.query(query, [userId, scanId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
-
     if (history === 0) {
       const response = h.response({
         status: "fail",
@@ -383,16 +305,6 @@ const getGradeById = async (request, h) => {
 
     const grades = await pool.query(query, [gradeId]);
     const grade = grades[0];
-
-    // const grade = await new Promise((resolve, reject) => {
-    //   db.query(query, [gradeId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
 
     if (!grade) {
       const response = h.response({
@@ -448,28 +360,8 @@ const consumeProduct = async (request, h) => {
     const checkConsume = await pool.query(query, [userId]);
     const consumeRecord = checkConsume[0];
 
-    // const checkConsume = await new Promise((resolve, reject) => {
-    //   db.query(query, [userId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
-
     if (!consumeRecord) {
       await pool.query(query2, [consumeSugar, currentDate, userId]);
-
-      // await new Promise((resolve, reject) => {
-      //   db.query(query2, [consumeSugar, currentDate, userId], (err, results) => {
-      //     if (err) {
-      //       reject(err);
-      //     } else {
-      //       resolve(results);
-      //     }
-      //   });
-      // });
 
       const response = h.response({
         status: "success",
@@ -484,16 +376,6 @@ const consumeProduct = async (request, h) => {
 
     if (checkConsume) {
       await pool.query(query3, [newConsume, currentDate, userId]);
-
-      // await new Promise((resolve, reject) => {
-      //   db.query(query3, [newConsume, currentDate, userId], (err, rows, field) => {
-      //     if (err) {
-      //       reject(err);
-      //     } else {
-      //       resolve();
-      //     }
-      //   });
-      // });
     }
 
     const response = h.response({
@@ -535,16 +417,6 @@ const getSugarConsume = async (request, h) => {
     const trackers = await pool.query(query, [userId]);
     const tracker = trackers[0];
 
-    // const tracker = await new Promise((resolve, reject) => {
-    //   db.query(query, [userId], (err, rows, field) => {
-    //     if (err) {
-    //       reject(err);
-    //     } else {
-    //       resolve(rows[0]);
-    //     }
-    //   });
-    // });
-
     if (!tracker) {
       const response = h.response({
         status: "fail",
@@ -562,16 +434,6 @@ const getSugarConsume = async (request, h) => {
       const resetQuery = "UPDATE table_consume SET consume_sugar = 0, consume_date = ? WHERE user_id = ?";
 
       await pool.query(resetQuery, [currentDate, userId]);
-
-      // await new Promise((resolve, reject) => {
-      //   db.query(resetQuery, [currentDate, userId, consumeDate], (err, result) => {
-      //     if (err) {
-      //       reject(err);
-      //     } else {
-      //       resolve(result);
-      //     }
-      //   });
-      // });
 
       tracker.consume_sugar = 0; // Update the local tracker object to reflect the reset
       tracker.consume_date = currentDate; // Update the local tracker object to reflect the new date
