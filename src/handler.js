@@ -494,14 +494,17 @@ const scanImage = async (request, h) => {
       const productResult = productResults[0];
       const currentDate = new Date().toISOString().split("T")[0];
 
-      const updateHistoryQuery = "INSERT INTO table_scan (scan_date, user_id, product_barcode, product_id) VALUES(?, ?, ?, 1)";
+      const updateHistoryQuery = "INSERT INTO table_scan (scan_date, user_id, product_barcode) VALUES(?, ?, ?)";
 
       await pool.query(updateHistoryQuery, [currentDate, userId, predictedClass]);
+
+      const getRecQuery = "SELECT * FROM table_rec INNER JOIN table_product ON table_rec.rec_product=table_product.product_barcode WHERE rec_product = ?";
+      const recResults = await pool.query(getRecQuery, [predictedClass]);
 
       const response = h.response({
         status: "success",
         message: "image predicted",
-        data: productResult
+        data: [ { productResult } , { recResults } ],
       });
       response.code(200);
       return response;
