@@ -26,10 +26,31 @@ const registerUser = async (request, h) => {
     const { name, email, pass, age } = request.payload;
     const hashedPass = await bcrypt.hash(pass, 10);
 
-    const query =
-      "INSERT INTO table_user(user_name, user_email, user_pass, user_age) VALUES(?, ?, ?, ?)";
+    let sugarLimit;
 
-    await pool.query(query, [name, email, hashedPass, age]);
+    if (age >= 1 && age <= 3) {
+      sugarLimit = 25;
+    } else if (age >= 4 && age <= 6) {
+      sugarLimit = 30;
+    } else if (age >= 7 && age <= 12) {
+      sugarLimit = 40;
+    } else if (age >= 13 && age <= 49) {
+      sugarLimit = 45;
+    } else if (age >= 50) {
+      sugarLimit = 40;
+    } else {
+      const response = h.response({
+        status: "fail",
+        message: "Invalid age provided",
+      });
+      response.code(400);
+      return response;
+    }
+
+    const query =
+      "INSERT INTO table_user(user_name, user_email, user_pass, user_age, sugar_limit) VALUES(?, ?, ?, ?, ?)";
+
+    await pool.query(query, [name, email, hashedPass, age, sugarLimit]);
 
     const response = h.response({
       status: "success",
