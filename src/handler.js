@@ -27,7 +27,7 @@ const registerUser = async (request, h) => {
     const hashedPass = await bcrypt.hash(pass, 10);
 
     const query =
-      "INSERT INTO table_user(user_name, user_email, user_pass, user_age) VALUES(?, ?, ?)";
+      "INSERT INTO table_user(user_name, user_email, user_pass, user_age) VALUES(?, ?, ?, ?)";
 
     await pool.query(query, [name, email, hashedPass, age]);
 
