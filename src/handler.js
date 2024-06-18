@@ -166,11 +166,22 @@ const updateUser = async (request, h) => {
 
   const userId = decodedToken.userId;
 
+  const query = "SELECT * FROM table_user WHERE user_id = ?";
+  const users = await pool.query(query, [userId]);
+  const user = users[0];
+
+  // Use existing values from the database if new values are not provided
+  const newName = name !== undefined ? name : user.user_name;
+  const newAge = age !== undefined ? age : user.user_age;
+  const newHeight = height !== undefined ? height : user.user_height;
+  const newWeight = weight !== undefined ? weight : user.user_weight;
+  const newLimit = limit !== undefined ? limit : user.sugar_limit;
+
   try {
     const query =
       "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
 
-    await pool.query(query, [name, age, height, weight, limit, userId]);
+    await pool.query(query, [newName, newAge, newHeight, newWeight, newLimit, userId]);
 
     const response = h.response({
       status: "success",
