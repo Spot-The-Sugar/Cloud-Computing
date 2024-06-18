@@ -23,13 +23,13 @@ let pool;
 
 const registerUser = async (request, h) => {
   try {
-    const { name, email, pass } = request.payload;
+    const { name, email, pass, age } = request.payload;
     const hashedPass = await bcrypt.hash(pass, 10);
 
     const query =
-      "INSERT INTO table_user(user_name, user_email, user_pass) VALUES(?, ?, ?)";
+      "INSERT INTO table_user(user_name, user_email, user_pass, user_age) VALUES(?, ?, ?)";
 
-    await pool.query(query, [name, email, hashedPass]);
+    await pool.query(query, [name, email, hashedPass, age]);
 
     const response = h.response({
       status: "success",
