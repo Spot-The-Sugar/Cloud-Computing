@@ -487,7 +487,7 @@ const scanImage = async (request, h) => {
     const userId = decodedToken.userId;
 
     try {
-      const query =
+      const getProductQuery =
         "SELECT * FROM table_product WHERE product_barcode = ?";
   
       const productResults = await pool.query(getProductQuery, [predictedClass]);
