@@ -1,13 +1,13 @@
 const { nanoid } = require("nanoid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const mysql = require('promise-mysql');
-const axios = require('axios');
-const Path = require('path');
-const FormData = require('form-data');
-const fs = require('fs');
+const mysql = require("promise-mysql");
+const axios = require("axios");
+const Path = require("path");
+const FormData = require("form-data");
+const fs = require("fs");
 
-const createUnixSocketPool = async config => {
+const createUnixSocketPool = async (config) => {
   return mysql.createPool({
     user: process.env.DB_USER, // e.g. 'my-db-user'
     password: process.env.DB_PASS, // e.g. 'my-db-password'
@@ -18,9 +18,8 @@ const createUnixSocketPool = async config => {
 
 let pool;
 (async () => {
-    pool = await createUnixSocketPool();
+  pool = await createUnixSocketPool();
 })();
-
 
 const registerUser = async (request, h) => {
   try {
@@ -83,10 +82,7 @@ const loginUser = async (request, h) => {
     const response = h.response({
       status: "success",
       message: "login successful",
-      data: [
-        { token },
-        { userData }
-      ],
+      data: [{ token }, { userData }],
     });
     response.code(200);
     return response;
@@ -171,7 +167,8 @@ const updateUser = async (request, h) => {
   const userId = decodedToken.userId;
 
   try {
-    const query = "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
+    const query =
+      "UPDATE table_user SET user_name = ?, user_age = ?, user_height = ?, user_weight = ?, sugar_limit = ? WHERE user_id = ?";
 
     await pool.query(query, [name, age, height, weight, limit, userId]);
 
@@ -209,7 +206,8 @@ const getHistory = async (request, h) => {
 
     const userId = decodedToken.userId;
 
-    const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
+    const query =
+      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ?";
 
     const history = await pool.query(query, [userId]);
 
@@ -258,7 +256,8 @@ const getHistoryById = async (request, h) => {
     const userId = decodedToken.userId;
     const scanId = request.params.scanId;
 
-    const query = "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ? AND scan_id = ?";
+    const query =
+      "SELECT * FROM table_scan INNER JOIN table_product ON table_scan.product_id=table_product.product_id WHERE user_id = ? AND scan_id = ?";
 
     const history = await pool.query(query, [userId, scanId]);
 
@@ -354,14 +353,16 @@ const consumeProduct = async (request, h) => {
   }
 
   const userId = decodedToken.userId;
-  const currentDate = new Date().toISOString().split('T')[0];
+  const currentDate = new Date().toISOString().split("T")[0];
 
   const { consumeSugar } = request.payload;
 
   try {
     const query = "SELECT * FROM table_consume WHERE user_id = ?";
-    const query2 = "INSERT INTO table_consume(consume_sugar, consume_date, user_id) VALUES(?, ?, ?)";
-    const query3 = "UPDATE table_consume SET consume_sugar = ?, consume_date = ? WHERE user_id = ?";
+    const query2 =
+      "INSERT INTO table_consume(consume_sugar, consume_date, user_id) VALUES(?, ?, ?)";
+    const query3 =
+      "UPDATE table_consume SET consume_sugar = ?, consume_date = ? WHERE user_id = ?";
 
     const checkConsume = await pool.query(query, [userId]);
     const consumeRecord = checkConsume[0];
@@ -418,7 +419,8 @@ const getSugarConsume = async (request, h) => {
 
     const userId = decodedToken.userId;
 
-    const query = "SELECT u.user_name, u.sugar_limit, c.consume_sugar, c.consume_date FROM table_user u JOIN table_consume c ON u.user_id = c.user_id WHERE u.user_id = ?";
+    const query =
+      "SELECT u.user_name, u.sugar_limit, c.consume_sugar, c.consume_date FROM table_user u JOIN table_consume c ON u.user_id = c.user_id WHERE u.user_id = ?";
 
     const trackers = await pool.query(query, [userId]);
     const tracker = trackers[0];
@@ -431,13 +433,16 @@ const getSugarConsume = async (request, h) => {
       response.code(400);
       return response;
     }
-    
-    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
-    const consumeDate = new Date(tracker.consume_date).toISOString().split('T')[0];
+
+    const currentDate = new Date().toISOString().split("T")[0]; // Get current date in YYYY-MM-DD format
+    const consumeDate = new Date(tracker.consume_date)
+      .toISOString()
+      .split("T")[0];
 
     if (currentDate !== consumeDate) {
       // If the dates differ, reset consume_sugar to 0
-      const resetQuery = "UPDATE table_consume SET consume_sugar = 0, consume_date = ? WHERE user_id = ?";
+      const resetQuery =
+        "UPDATE table_consume SET consume_sugar = 0, consume_date = ? WHERE user_id = ?";
 
       await pool.query(resetQuery, [currentDate, userId]);
 
@@ -464,69 +469,104 @@ const getSugarConsume = async (request, h) => {
 
 const scanImage = async (request, h) => {
   try {
+    const { predictedClass } = request.payload;
+    const token = request.headers.authorization.replace("Bearer ", "");
+    let decodedToken;
 
-      const token = request.headers.authorization.replace('Bearer ', '');
-      let decodedToken;
-
-      try{
-          decodedToken = jwt.verify(token, 'secret_key');
-      } catch (err) {
-          const response = h.response({
-              status: 'missed',
-              message: 'User is not authorized!',
-          });
-          response.code(401);
-          return response;
-      }
-
-      const userId = decodedToken.userId;
-      const file = request.payload.file;
-      
-      // Save the file to a temp location
-      const filePath = Path.join(__dirname, 'tempFile', file.hapi.filename);
-      const writableStream = fs.createWriteStream(filePath);
-      file.pipe(writableStream);
-
-      // Wait to be saved
-      await new Promise((resolve, reject) => {
-          writableStream.on('finish', resolve);
-          writableStream.on('error', reject);
+    try {
+      decodedToken = jwt.verify(token, "secret_key");
+    } catch (err) {
+      const response = h.response({
+        status: "missed",
+        message: "User is not authorized!",
       });
-      
-      const formData = new FormData();
-      formData.append('file', fs.createReadStream(filePath));
-      
-      const mlResponse = await axios.post('https://scan-dhmn4637lq-et.a.run.app/scan', formData, {
-          headers: formData.getHeaders(),
-          responseType: 'json',  
-      });
+      response.code(401);
+      return response;
+    }
 
-      fs.unlinkSync(filePath);
-      
-      const predictedBarcode = mlResponse.data.predicted_class;
-      const predictedProb = mlResponse.data.prediction_prob;
+    const userId = decodedToken.userId;
 
-      const getProductQuery = "SELECT * FROM table_product WHERE product_barcode = ?";
-
-      const productResults = await pool.query(getProductQuery, [predictedBarcode]);
+    try {
+      const query =
+        "SELECT * FROM table_product WHERE product_barcode = ?";
+  
+      const productResults = await pool.query(getProductQuery, [predictedClass]);
       const productResult = productResults[0];
 
       const response = h.response({
-          status: 'success',
-          message: 'image predicted',
-          predictedProb: predictedProb,
-          data: productResult,
+        status: "success",
+        message: "image predicted",
+        data: productResult
       });
       response.code(200);
       return response;
-  } catch (err) {
+    } catch (err) {
       const response = h.response({
-          status: 'fail',
-          message: err.message,
+        status: "fail",
+        message: err.message,
       });
       response.code(500);
       return response;
+    }
+
+    // const file = request.payload.file;
+
+    // // Save the file to a temp location
+    // const filePath = Path.join(__dirname, 'tempFile', file.hapi.filename);
+    // const writableStream = fs.createWriteStream(filePath);
+    // file.pipe(writableStream);
+
+    // // Wait to be saved
+    // await new Promise((resolve, reject) => {
+    //     writableStream.on('finish', resolve);
+    //     writableStream.on('error', reject);
+    // });
+
+    // const formData = new FormData();
+    // formData.append('file', fs.createReadStream(filePath));
+
+    // const mlResponse = await axios.post('https://scan-dhmn4637lq-et.a.run.app/scan', formData, {
+    //     headers: formData.getHeaders(),
+    //     responseType: 'json',
+    // });
+
+    // fs.unlinkSync(filePath);
+
+    // const predictedBarcode = mlResponse.data.predicted_class;
+    // const predictedProb = mlResponse.data.prediction_prob;
+
+    // const getProductQuery = "SELECT * FROM table_product WHERE product_barcode = ?";
+
+    // const productResults = await pool.query(getProductQuery, [predictedBarcode]);
+    // const productResult = productResults[0];
+
+    // const response = h.response({
+    //   status: "success",
+    //   message: "image predicted",
+    //   predictedProb: predictedProb,
+    //   data: productResult,
+    // });
+    // response.code(200);
+    // return response;
+  } catch (err) {
+    const response = h.response({
+      status: "fail",
+      message: err.message,
+    });
+    response.code(500);
+    return response;
   }
 };
 
-module.exports = { registerUser, loginUser, getUser, updateUser, getHistory, getHistoryById, getGradeById, consumeProduct, getSugarConsume, scanImage };
+module.exports = {
+  registerUser,
+  loginUser,
+  getUser,
+  updateUser,
+  getHistory,
+  getHistoryById,
+  getGradeById,
+  consumeProduct,
+  getSugarConsume,
+  scanImage,
+};
