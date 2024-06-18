@@ -492,6 +492,11 @@ const scanImage = async (request, h) => {
   
       const productResults = await pool.query(getProductQuery, [predictedClass]);
       const productResult = productResults[0];
+      const currentDate = new Date().toISOString().split("T")[0];
+
+      const updateHistoryQuery = "INSERT INTO table_scan (scan_date, user_id, product_id) VALUES(?, ?, ?)";
+
+      await pool.query(updateHistoryQuery, [currentDate, userId, predictedClass]);
 
       const response = h.response({
         status: "success",
