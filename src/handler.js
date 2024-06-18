@@ -497,7 +497,7 @@ const scanImage = async (request, h) => {
       formData.append('file', fs.createReadStream(filePath));
       
       const mlResponse = await axios.post('https://scan-dhmn4637lq-et.a.run.app/scan', formData, {
-          headers: formData.getHeaders,
+          headers: formData.getHeaders(),
           responseType: 'json',  
       });
 
